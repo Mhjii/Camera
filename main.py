@@ -4,7 +4,7 @@ import numpy as np
 colorMin = (0,0,0)
 colorMax = (0,0,0)
 
-DeltaH = 10
+DeltaH = 15
 DeltaS = 60
 DeltaB = 60
 
