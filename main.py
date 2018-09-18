@@ -15,6 +15,11 @@ DeltaG = 20
 lastImg = None
 paused = False
 
+laplacian = np.array((
+	[0, 1, 0],
+	[1, -4, 1],
+	[0, 1, 0]), dtype="int")
+
 # Setup SimpleBlobDetector parameters.
 params = cv2.SimpleBlobDetector_Params()
 
@@ -49,6 +54,22 @@ detector = cv2.SimpleBlobDetector_create(params)
 ## on click function to caputre mouse events##
 # takes in an event, the location of the event,
 # any flags and the image that was clicked
+
+
+def convolve(image, kernel):
+    # grab the spatial dimensions of the image, along with
+    # the spatial dimensions of the kernel
+    (iH, iW) = image.shape[:2]
+    (kH, kW) = kernel.shape[:2]
+
+    # allocate memory for the output image, taking care to
+    # "pad" the borders of the input image so the spatial
+    # size (i.e., width and height) are not reduced
+    pad = (kW - 1) // 2
+    image = cv2.copyMakeBorder(image, pad, pad, pad, pad,
+                               cv2.BORDER_REPLICATE)
+    output = np.zeros((iH, iW), dtype="float32")
+
 def onclick(event, x, y,flags,frame):
     # importing globals
     global colorMax, colorMin,lastImg,paused
@@ -100,6 +121,11 @@ def show_webcam(mirror=False):
         res = cv2.bitwise_and(img,img,mask= mask)
         # show the mask
         cv2.imshow('mask', mask)
+
+        convoleOutput = convolve(mask, laplacian)
+        cvOutput = cv2.filter2D(mask, -1, laplacian)
+
+        cv2.imshow('Conv: Edges',cvOutput)
 
         ## commented out to disable blob detection
         #keypoints = detector.detect(res)
