@@ -5,6 +5,7 @@ colorMin = (0,0,0)
 colorMax = (0,0,0)
 
 DeltaH = 15
+
 DeltaS = 60
 DeltaB = 60
 
