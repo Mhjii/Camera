@@ -168,11 +168,13 @@ def show_webcam(mirror=False):
                 center = np.sum(points, 0) / 4
                 print(center[0])
 
+
                 cv2.drawMarker(img, (box[0][0], box[0][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (box[1][0], box[1][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (box[2][0], box[2][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (box[3][0], box[3][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (int(center[0]), int(center[1])), (255, 165, 0), cv2.MARKER_TRIANGLE_UP)
+                cv2.arrowedLine(img,(320,240),(int(center[0]), int(center[1])), (255, 100, 255),5)
 
             except:
                 cv2.drawMarker(img, (0, 0), (255, 165, 0), cv2.MARKER_TRIANGLE_UP)
