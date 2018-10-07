@@ -120,10 +120,11 @@ def onclick(event, x, y,flags,frame = None):
     cv2.namedWindow("image")
 
 ## this is the look that allows the webcam to playback video
-def show_webcam(mirror=False):
-    global paused,lastImg
-    # setting up our video capture
     cam = cv2.VideoCapture(0)
+def show_webcam(mirror=False):
+    global paused,lastImg,CAM
+    # setting up our video capture
+
     # keep doing this forever
     while True:
         # check if paused
