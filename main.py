@@ -12,6 +12,11 @@ DeltaB = 75
 DeltaR = 20
 DeltaG = 20
 
+minArea = 300
+maxArea = 180000
+
+color = np.zeros(3)
+
 lastImg = None
 paused = False
 
@@ -95,7 +100,7 @@ def convolve(image, kernel):
 
 def onclick(event, x, y,flags,frame = None):
     # importing globals
-    global colorMax, colorMin,lastImg,paused
+    global colorMax, colorMin,lastImg,paused,color
     #Left mouse click selects color to mask with
     if event == cv2.EVENT_LBUTTONDOWN:
         refPt = [(x, y)]
@@ -121,7 +126,7 @@ def onclick(event, x, y,flags,frame = None):
 
 ## this is the look that allows the webcam to playback video
 def show_webcam(mirror=False):
-    global paused,lastImg
+    global paused,lastImg,colorMax,colorMin,color
     # setting up our video capture
     cam = cv2.VideoCapture(0)
     # keep doing this forever
@@ -144,6 +149,10 @@ def show_webcam(mirror=False):
             # show the mask
             cv2.imshow('mask', mask)
             cv2.imshow('Bitwise', res)
+            cv2.meanStdDev(img,color,None,mask)
+            colorMaxNew = color.astype(int) + (DeltaH, DeltaS, DeltaB)
+            colorMinNew = color.astype(int) - (DeltaH, DeltaS, DeltaB)
+
             # convoleOutput = convolve(mask, laplacian)
             laplac = cv2.filter2D(mask, -1, laplacian)
             # topRight = cv2.filter2D(mask, -1, topR)
@@ -154,19 +163,25 @@ def show_webcam(mirror=False):
             ret, thresh = cv2.threshold(mask, 200, 255, 3)
             im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             try:
-                maxArea = 0
+                maxArea = minArea
+                # this boundary and the following for loop cause the
                 # for cont in contours:
                 #     if cv2.contourArea(cont) > maxArea:
                 #         cnt = cont
-                cnt = contours[0]
-                rect = cv2.minAreaRect(cnt)
+                for cnt in contours:
+                    area = cv2.contourArea(cnt)
+                    if area > maxArea:
+                        maxArea = area
+                        rect = cv2.minAreaRect(cnt)
+
+
                 box = cv2.boxPoints(rect)
                 box = np.int0(box)
                 cv2.drawContours(img, [box], 0, (0, 0, 255), 2)
                 cv2.drawContours(img, contours, 0, (0, 255, 255), 2)
                 points = np.array(box)
                 center = np.sum(points, 0) / 4
-                print(center[0])
+
 
 
                 cv2.drawMarker(img, (box[0][0], box[0][1]), (255, 0, 0), cv2.MARKER_CROSS)
@@ -175,6 +190,7 @@ def show_webcam(mirror=False):
                 cv2.drawMarker(img, (box[3][0], box[3][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (int(center[0]), int(center[1])), (255, 165, 0), cv2.MARKER_TRIANGLE_UP)
                 cv2.arrowedLine(img,(320,240),(int(center[0]), int(center[1])), (255, 100, 255),5)
+                vector = [320-int(center[0]),240-int(center[0])]
 
             except:
                 cv2.drawMarker(img, (0, 0), (255, 165, 0), cv2.MARKER_TRIANGLE_UP)
@@ -200,6 +216,8 @@ def show_webcam(mirror=False):
             cv2.imshow('image', img)
             # setup the callbac to allow the clicks to work
             cv2.setMouseCallback("image", onclick, hsv)
+            colorMax = colorMaxNew
+            colorMin = colorMinNew
         # if were paused keep displaying the last image
         else:
             img = lastImg
