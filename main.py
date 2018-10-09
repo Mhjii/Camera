@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+from firebase import dataBase
 import pylivestream as stream
 
 colorMin = (0,0,0)
@@ -8,12 +9,14 @@ colorMax = (0,0,0)
 DeltaH = 10
 
 DeltaS = 50
-DeltaB = 75
+DeltaB = 100
 DeltaR = 20
 DeltaG = 20
 
 minArea = 300
 maxArea = 180000
+
+frameCount = 0
 
 color = np.zeros(3)
 
@@ -83,6 +86,11 @@ detector = cv2.SimpleBlobDetector_create(params)
 # takes in an event, the location of the event,
 # any flags and the image that was clicked
 
+firebase = dataBase()
+firebase.init()
+
+
+
 
 def convolve(image, kernel):
     # grab the spatial dimensions of the image, along with
@@ -109,9 +117,17 @@ def onclick(event, x, y,flags,frame = None):
         print('you just clicked me at' + str(refPt))
         print('the color here is' + str(color))
         colorMax = color + (DeltaH,DeltaS,DeltaB)
+        for i,val in enumerate(colorMax):
+            if val > 255:
+                colorMax[i] = 255
         print('New color max ' + str(colorMax))
         colorMin = color - (DeltaH, DeltaS, DeltaB)
+        for i,val in enumerate(colorMin):
+
+            if val < 0:
+                colorMin[i] = 0
         print('New color min ' + str(colorMin))
+        firebase.storeColors(colorMin,color,colorMax)
 
     # right click pauses the simulation
     if event == cv2.EVENT_RBUTTONDOWN:
@@ -126,13 +142,14 @@ def onclick(event, x, y,flags,frame = None):
 
 ## this is the look that allows the webcam to playback video
 def show_webcam(mirror=False):
-    global paused,lastImg,colorMax,colorMin,color
+    global paused,lastImg,colorMax,colorMin,color,frameCount
     # setting up our video capture
     cam = cv2.VideoCapture(0)
     # keep doing this forever
     while True:
         # check if paused
         if not paused:
+            frameCount += 1
             # if not get a new image
             ret_val, img = cam.read()
             # if the camera needs to be flipped
@@ -184,6 +201,7 @@ def show_webcam(mirror=False):
 
 
 
+
                 cv2.drawMarker(img, (box[0][0], box[0][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (box[1][0], box[1][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (box[2][0], box[2][1]), (255, 0, 0), cv2.MARKER_CROSS)
@@ -195,6 +213,9 @@ def show_webcam(mirror=False):
             except:
                 cv2.drawMarker(img, (0, 0), (255, 165, 0), cv2.MARKER_TRIANGLE_UP)
 
+            if frameCount == 120:
+                firebase.storeCentroid(center)
+                frameCount = 0
             # leftmost = tuple(laplac[laplac[:, :, 0].argmin()][0])
             # rightmost = tuple(laplac[laplac[:, :, 0].argmax()][0])
             # topmost = tuple(laplac[laplac[:, :, 1].argmin()][0])
