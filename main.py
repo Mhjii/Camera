@@ -43,7 +43,8 @@ def onclick(event, x, y,flags,frame = None):
         refPt = [(x, y)]
         cropping = True
         color = frame[y,x]
-        print('Just clicked at: \t' + str(refPt))
+        print(refPt[0])
+        print('Just clicked at: \t' + str('[{:} {:}]'.format(refPt[0][0],refPt[0][1])))
         print('Selected Color: \t' + str(color))
         colorMax = color + (DeltaH,DeltaS,DeltaB)
         for i,val in enumerate(colorMax):
@@ -145,7 +146,7 @@ def show_webcam(mirror=False):
                 fTime = tock - tick
                 FPS = frameCount/fTime
 
-                print('Heading: [{:.5f},{:.5f},{:.5f}]\t\tFPS: {:.2f}'.format(vector[0],vector[1],vector[2],FPS))
+                print('Heading: [{:.4f},{:.4f},{:.4f}]\tFPS: {:.2f}'.format(vector[0],vector[1],vector[2],FPS))
                 tick = time.time()
                 frameCount = 0
             cv2.imshow('image', img)
