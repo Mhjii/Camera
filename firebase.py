@@ -25,7 +25,7 @@ class dataBase():
                       "sel":{"H":int(sel[0]),"S":int(sel[1]),"V":int(sel[2])}}
         }
         results = self.db.child("flight").update(data)
-        print(results)
+        #print(results)
 
     def storeCentroid(self,centroid):
         data = {
@@ -35,4 +35,4 @@ class dataBase():
             }
         }
         results = self.db.child("flight").update(data)
-        print(results)
+        #print(results)

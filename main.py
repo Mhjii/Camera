@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from firebase import dataBase
-import pylivestream as stream
+import time
 
 colorMin = (0,0,0)
 colorMax = (0,0,0)
@@ -13,98 +13,27 @@ DeltaB = 100
 DeltaR = 20
 DeltaG = 20
 
-minArea = 300
-maxArea = 180000
+minArea = 300       # threshold for blob to be detected
+AbsMaxArea = 180000 # cuttoff point for thrust, determines what blob size signifies a landing
 
-frameCount = 0
+frameCount = 0      # global frame counter for intermittent events
 
 color = np.zeros(3)
 
 lastImg = None
 paused = False
 
-kernel = np.ones((21,21),np.float32)/441
+tick = time.time()  # timing objects to calculate fps
+tock = time.time()
 
-
-laplacian = np.array((
-	[0, 1, 0],
-	[1, -4, 1],
-	[0, 1, 0]), dtype="int")
-
-topR = np.array((
-	[-4, 1, 1],
-	[1, 0, 0],
-	[1, 0, 0]), dtype="int")
-
-topL = np.array((
-	[1, 1, -4],
-	[0, 0, 1],
-	[0, 0, 1]), dtype="int")
-
-botR = np.array((
-	[1, 0, 0],
-	[1, 0, 0],
-	[-4, 1, 1]), dtype="int")
-
-botL = np.array((
-	[0, 0, 1],
-	[0, 0, 1],
-	[1, 1, -4]), dtype="int")
-
-# Setup SimpleBlobDetector parameters.
-params = cv2.SimpleBlobDetector_Params()
-
-# Setup SimpleBlobDetector parameters.
-params = cv2.SimpleBlobDetector_Params()
-
-# Change thresholds
-params.minThreshold = 10;
-params.maxThreshold = 200;
-
-# Filter by Area.
-params.filterByArea = True
-params.minArea = 1500
-
-# Filter by Circularity
-params.filterByCircularity = False
-params.minCircularity = 0.1
-
-# Filter by Convexity
-params.filterByConvexity = True
-params.minConvexity = 0.87
-
-# Filter by Inertia
-params.filterByInertia = False
-params.minInertiaRatio = 0.01
-
-# setup blob detector
-# unused in example
-detector = cv2.SimpleBlobDetector_create(params)
-
+kernel = np.ones((21,21),np.float32)/441 # gaussian blur kernel
 
 ## on click function to caputre mouse events##
 # takes in an event, the location of the event,
 # any flags and the image that was clicked
 
-firebase = dataBase()
-firebase.init()
-
-
-
-
-def convolve(image, kernel):
-    # grab the spatial dimensions of the image, along with
-    # the spatial dimensions of the kernel
-    (iH, iW) = image.shape[:2]
-    (kH, kW) = kernel.shape[:2]
-
-    # allocate memory for the output image, taking care to
-    # "pad" the borders of the input image so the spatial
-    # size (i.e., width and height) are not reduced
-    pad = (kW - 1) // 2
-    image = cv2.copyMakeBorder(image, pad, pad, pad, pad,
-                               cv2.BORDER_REPLICATE)
-    output = np.zeros((iH, iW), dtype="float32")
+#firebase = dataBase()
+#firebase.init()
 
 def onclick(event, x, y,flags,frame = None):
     # importing globals
@@ -114,20 +43,20 @@ def onclick(event, x, y,flags,frame = None):
         refPt = [(x, y)]
         cropping = True
         color = frame[y,x]
-        print('you just clicked me at' + str(refPt))
-        print('the color here is' + str(color))
+        print('Just clicked at: \t' + str(refPt))
+        print('Selected Color: \t' + str(color))
         colorMax = color + (DeltaH,DeltaS,DeltaB)
         for i,val in enumerate(colorMax):
             if val > 255:
                 colorMax[i] = 255
-        print('New color max ' + str(colorMax))
+        print('New color max:\t\t' + str(colorMax))
         colorMin = color - (DeltaH, DeltaS, DeltaB)
         for i,val in enumerate(colorMin):
 
             if val < 0:
                 colorMin[i] = 0
-        print('New color min ' + str(colorMin))
-        firebase.storeColors(colorMin,color,colorMax)
+        print('New color min:\t\t' + str(colorMin))
+        #firebase.storeColors(colorMin,color,colorMax)
 
     # right click pauses the simulation
     if event == cv2.EVENT_RBUTTONDOWN:
@@ -143,6 +72,7 @@ def onclick(event, x, y,flags,frame = None):
 ## this is the look that allows the webcam to playback video
 def show_webcam(mirror=False):
     global paused,lastImg,colorMax,colorMin,color,frameCount
+    global tick,tock
     # setting up our video capture
     cam = cv2.VideoCapture(0)
     # keep doing this forever
@@ -162,29 +92,25 @@ def show_webcam(mirror=False):
             mask = cv2.inRange(hsv, colorMin, colorMax)
             # generata a result
 
-            res = cv2.bitwise_and(img, img, mask=mask)
+            #res = cv2.bitwise_and(img, img, mask=mask)
             # show the mask
-            cv2.imshow('mask', mask)
-            cv2.imshow('Bitwise', res)
+            #cv2.imshow('mask', mask)
+            #cv2.imshow('Bitwise', res)
             cv2.meanStdDev(img,color,None,mask)
             colorMaxNew = color.astype(int) + (DeltaH, DeltaS, DeltaB)
             colorMinNew = color.astype(int) - (DeltaH, DeltaS, DeltaB)
 
             # convoleOutput = convolve(mask, laplacian)
-            laplac = cv2.filter2D(mask, -1, laplacian)
+            #laplac = cv2.filter2D(mask, -1, laplacian)
             # topRight = cv2.filter2D(mask, -1, topR)
             # bottomLeft = cv2.filter2D(mask, -1, botL)
             # bottomRight = cv2.filter2D(mask, -1, botR)
 
-            cv2.imshow('Conv: Edges', laplac)
+            #cv2.imshow('Conv: Edges', laplac)
             ret, thresh = cv2.threshold(mask, 200, 255, 3)
             im2, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
             try:
                 maxArea = minArea
-                # this boundary and the following for loop cause the
-                # for cont in contours:
-                #     if cv2.contourArea(cont) > maxArea:
-                #         cnt = cont
                 for cnt in contours:
                     area = cv2.contourArea(cnt)
                     if area > maxArea:
@@ -198,42 +124,30 @@ def show_webcam(mirror=False):
                 cv2.drawContours(img, contours, 0, (0, 255, 255), 2)
                 points = np.array(box)
                 center = np.sum(points, 0) / 4
-
-
-
-
                 cv2.drawMarker(img, (box[0][0], box[0][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (box[1][0], box[1][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (box[2][0], box[2][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (box[3][0], box[3][1]), (255, 0, 0), cv2.MARKER_CROSS)
                 cv2.drawMarker(img, (int(center[0]), int(center[1])), (255, 165, 0), cv2.MARKER_TRIANGLE_UP)
                 cv2.arrowedLine(img,(320,240),(int(center[0]), int(center[1])), (255, 100, 255),5)
-                vector = [320-int(center[0]),240-int(center[0])]
+                rectArea = boxArea(box)
+                z = rectArea/307200
+                vector = pix2vec(center,[320,240],z)
+
 
             except:
                 cv2.drawMarker(img, (0, 0), (255, 165, 0), cv2.MARKER_TRIANGLE_UP)
 
-            if frameCount == 120:
-                firebase.storeCentroid(center)
+            if frameCount == 30:
+                tock = time.time()
+                #firebase.storeCentroid(center)
+
+                fTime = tock - tick
+                FPS = frameCount/fTime
+
+                print('Heading: [{:.5f},{:.5f},{:.5f}]\t\tFPS: {:.2f}'.format(vector[0],vector[1],vector[2],FPS))
+                tick = time.time()
                 frameCount = 0
-            # leftmost = tuple(laplac[laplac[:, :, 0].argmin()][0])
-            # rightmost = tuple(laplac[laplac[:, :, 0].argmax()][0])
-            # topmost = tuple(laplac[laplac[:, :, 1].argmin()][0])
-            # bottommost = tuple(laplac[laplac[:, :, 1].argmax()][0])
-
-            ## commented out to disable blob detection
-            # keypoints = detector.detect(img)
-            # blobImg = cv2.drawKeypoints(img,keypoints, np.array([]), (0,0,255), cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-
-            # img = cv2.circle(img, leftmost, 5, (0,0,255), -1)
-            # img = cv2.circle(img, rightmost, 5, (0, 0, 255), -1)
-            # img = cv2.circle(img, topmost, 5, (0, 0, 255), -1)
-            # img = cv2.circle(img, bottommost, 5, (0, 0, 255), -1)
-
-            # cont = cv2.findContours(res,cv2.RETR_FLOODFILL,cv2.CHAIN_APPROX_SIMPLE)
-
-            # contours = cv2.drawContours(img,[cont],-1,(0,255,0),2)
-            # show the original image
             cv2.imshow('image', img)
             # setup the callbac to allow the clicks to work
             cv2.setMouseCallback("image", onclick, hsv)
@@ -260,6 +174,32 @@ def show_webcam(mirror=False):
 def main():
     show_webcam(mirror=True)
 
+def pix2vec(point,center,blobRatio):
+    ## returns the unit vector for the given point and center
+    x = point[0]-center[0]
+    y = center[1]-point[1]
+    z = blobRatio
+
+    m = np.sqrt(x*x+y*y+z*z)
+    vx = x/m
+    vy = y/m
+    vz = z/m
+    m = np.sqrt(vx * vx + vy * vy + vz * vz)
+    return [vx, vy, vz]
+
+def boxArea(box):
+    ## returns the bounding area of a openCV Box2D object
+    x1, y1 = box[0]
+    x2, y2 = box[1]
+    x3, y3 = box[2]
+    s1x = x1 - x2
+    s1y = y1 - y2
+    s2x = x1 - x3
+    s2y = y1 - y3
+    s1 = np.sqrt(s1x*s1x + s1y*s1y)
+    s2 = np.sqrt(s2x*s2x + s2y*s2y)
+    area = s1*s2
+    return area
 
 if __name__ == '__main__':
     main()
