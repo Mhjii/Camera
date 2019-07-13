@@ -1,7 +1,8 @@
 import cv2
 import numpy as np
-from firebase import dataBase
+#from firebase import dataBase
 import time
+import py2exe
 
 colorMin = (0,0,0)
 colorMax = (0,0,0)
@@ -17,6 +18,7 @@ minArea = 300       # threshold for blob to be detected
 AbsMaxArea = 180000 # cuttoff point for thrust, determines what blob size signifies a landing
 
 frameCount = 0      # global frame counter for intermittent events
+FPS = 0
 
 color = np.zeros(3)
 
@@ -68,11 +70,12 @@ def onclick(event, x, y,flags,frame = None):
         else:
             print('unpaused')
 
-    cv2.namedWindow("image")
+
+
 
 ## this is the look that allows the webcam to playback video
 def show_webcam(mirror=False):
-    global paused,lastImg,colorMax,colorMin,color,frameCount
+    global paused,lastImg,colorMax,colorMin,color,frameCount,FPS
     global tick,tock
     # setting up our video capture
     cam = cv2.VideoCapture(0)
@@ -97,9 +100,7 @@ def show_webcam(mirror=False):
             # show the mask
             #cv2.imshow('mask', mask)
             #cv2.imshow('Bitwise', res)
-            cv2.meanStdDev(img,color,None,mask)
-            colorMaxNew = color.astype(int) + (DeltaH, DeltaS, DeltaB)
-            colorMinNew = color.astype(int) - (DeltaH, DeltaS, DeltaB)
+
 
             # convoleOutput = convolve(mask, laplacian)
             #laplac = cv2.filter2D(mask, -1, laplacian)
@@ -118,7 +119,6 @@ def show_webcam(mirror=False):
                         maxArea = area
                         rect = cv2.minAreaRect(cnt)
 
-
                 box = cv2.boxPoints(rect)
                 box = np.int0(box)
                 cv2.drawContours(img, [box], 0, (0, 0, 255), 2)
@@ -135,6 +135,13 @@ def show_webcam(mirror=False):
                 z = rectArea/307200
                 vector = pix2vec(center,[320,240],z)
 
+                crop_img = img[0:10, 0:10]
+                cv2.imshow("crop", crop_img)
+
+                cv2.meanStdDev(img, color, None, mask)
+                colorMaxNew = color.astype(int) + (DeltaH, DeltaS, DeltaB)
+                colorMinNew = color.astype(int) - (DeltaH, DeltaS, DeltaB)
+
 
             except:
                 cv2.drawMarker(img, (0, 0), (255, 165, 0), cv2.MARKER_TRIANGLE_UP)
@@ -149,15 +156,29 @@ def show_webcam(mirror=False):
                 print('Heading: [{:.4f},{:.4f},{:.4f}]\tFPS: {:.2f}'.format(vector[0],vector[1],vector[2],FPS))
                 tick = time.time()
                 frameCount = 0
-            cv2.imshow('image', img)
+            cv2.putText(img,
+                        'Heading: [{:.4f},{:.4f},{:.4f}]          FPS: {:.2f}'.format(vector[0],vector[1],vector[2],FPS),
+                        (15,30),
+                        cv2.FONT_HERSHEY_PLAIN,
+                        1,
+                        (255,255,255))
+            cv2.putText(img,
+                        "Click On Flashcards to detect",
+                        (15,450),
+                        cv2.FONT_HERSHEY_PLAIN,
+                        1,
+                        (255,255,255))
+            #cv2.namedWindow("image", cv2.WND_PROP_FULLSCREEN)
+            #cv2.setWindowProperty("image", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            cv2.imshow("image", img)
+
             # setup the callbac to allow the clicks to work
             cv2.setMouseCallback("image", onclick, hsv)
-            colorMax = colorMaxNew
-            colorMin = colorMinNew
+
         # if were paused keep displaying the last image
         else:
             img = lastImg
-            cv2.imshow('image', img)
+            cv2.imshow("image", img)
             cv2.setMouseCallback("image", onclick)
         # convert the image to HSV encoding
         # this allows similar colors to be more easily selected
